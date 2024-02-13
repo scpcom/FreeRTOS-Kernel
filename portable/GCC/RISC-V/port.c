@@ -91,10 +91,14 @@ void vPortSetupTimerInterrupt( void ) __attribute__(( weak ));
 /* Used to program the machine timer compare register. */
 uint64_t ullNextTime = 0ULL;
 const uint64_t *pullNextTime = &ullNextTime;
-const size_t uxTimerIncrementsForOneTick = ( size_t ) ( ( configCPU_CLOCK_HZ ) / ( configTICK_RATE_HZ ) ); /* Assumes increment won't go over 32-bits. */
+const size_t uxTimerIncrementsForOneTick = ( size_t ) ( ( configSYS_CLOCK_HZ ) / ( configTICK_RATE_HZ ) ); /* Assumes increment won't go over 32-bits. */
 uint32_t const ullMachineTimerCompareRegisterBase = configMTIMECMP_BASE_ADDRESS;
+#if ( defined THEAD_C906 ) && ( !defined configMTIME_BASE_ADDRESS ) && ( configMTIMECMP_BASE_ADDRESS != 0 )
+volatile uint32_t * pulMachineTimerCompareRegisterL = NULL;
+volatile uint32_t * pulMachineTimerCompareRegisterH = NULL;
+#else
 volatile uint64_t * pullMachineTimerCompareRegister = NULL;
-
+#endif
 /* Set configCHECK_FOR_STACK_OVERFLOW to 3 to add ISR stack checking to task
 stack checking.  A problem in the ISR stack will trigger an assert, not call the
 stack overflow hook function (because the stack overflow hook is specific to a
@@ -144,6 +148,30 @@ task stack, not the ISR stack). */
 		/* Prepare the time to use after the next tick interrupt. */
 		ullNextTime += ( uint64_t ) uxTimerIncrementsForOneTick;
 	}
+#elif defined THEAD_C906
+
+	void vPortSetupTimerInterrupt( void )
+	{
+		uint64_t ullCurrentTime;
+		volatile uint32_t ulHartId;
+		__asm volatile( "csrr %0, mhartid" : "=r"( ulHartId ) );
+		// 32bit IO bus, need to get hi/lo seperately
+		pulMachineTimerCompareRegisterL =
+			( volatile uint32_t * ) ( ullMachineTimerCompareRegisterBase + ( ulHartId * sizeof( uint64_t ) ) );
+		pulMachineTimerCompareRegisterH =
+			 ( volatile uint32_t * ) ( ullMachineTimerCompareRegisterBase + sizeof(uint32_t) + ( ulHartId * sizeof( uint64_t ) ) );
+
+		asm volatile("rdtime %0": "=r"(ullCurrentTime));
+		ullNextTime = ( uint64_t ) ullCurrentTime;
+		ullNextTime += ( uint64_t ) uxTimerIncrementsForOneTick;
+		*pulMachineTimerCompareRegisterL = (uint32_t) (ullNextTime & 0xFFFFFFFF);
+		*pulMachineTimerCompareRegisterH = (uint32_t) (ullNextTime >> 32);
+
+		/* Prepare the time to use after the next tick interrupt. */
+		ullNextTime += ( uint64_t ) uxTimerIncrementsForOneTick;
+
+	}
+
 
 #endif /* ( configMTIME_BASE_ADDRESS != 0 ) && ( configMTIME_BASE_ADDRESS != 0 ) */
 /*-----------------------------------------------------------*/
@@ -179,7 +207,7 @@ extern void xPortStartFirstTask( void );
 	configure whichever clock is to be used to generate the tick interrupt. */
 	vPortSetupTimerInterrupt();
 
-	#if( ( configMTIME_BASE_ADDRESS != 0 ) && ( configMTIMECMP_BASE_ADDRESS != 0 ) )
+	#if( ( configMTIME_BASE_ADDRESS != 0 ) && ( configMTIMECMP_BASE_ADDRESS != 0 ) || (defined THEAD_C906))
 	{
 		/* Enable mtime and external interrupts.  1<<7 for timer interrupt, 1<<11
 		for external interrupt.  _RB_ What happens here when mtime is not present as

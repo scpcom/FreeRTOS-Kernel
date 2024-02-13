@@ -1,8 +1,6 @@
 /*
- * FreeRTOS Kernel V10.4.6
- * Copyright (C) 2021 Amazon.com, Inc. or its affiliates.  All Rights Reserved.
- *
- * SPDX-License-Identifier: MIT
+ * FreeRTOS Kernel V10.4.1
+ * Copyright (C) 2020 Amazon.com, Inc. or its affiliates.  All Rights Reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy of
  * this software and associated documentation files (the "Software"), to deal in
@@ -24,6 +22,7 @@
  * https://www.FreeRTOS.org
  * https://github.com/FreeRTOS
  *
+ * 1 tab == 4 spaces!
  */
 
 /* Standard includes. */
@@ -129,7 +128,7 @@ point is zero. */
 }
 
 /* Hardware specifics used when sanity checking the configuration. */
-#define portINTERRUPT_PRIORITY_REGISTER_OFFSET		0x400UL
+#define portINTERRUPT_PRIORITY_REGISTER_OFFSET		0x04UL
 #define portMAX_8_BIT_VALUE							( ( uint8_t ) 0xff )
 #define portBIT_0_SET								( ( uint8_t ) 0x01 )
 
@@ -271,8 +270,8 @@ uint32_t ulAPSR;
 	#if( configASSERT_DEFINED == 1 )
 	{
 		volatile uint32_t ulOriginalPriority;
-		volatile uint8_t * const pucFirstUserPriorityRegister = ( volatile uint8_t * const ) ( configINTERRUPT_CONTROLLER_BASE_ADDRESS + portINTERRUPT_PRIORITY_REGISTER_OFFSET );
-		volatile uint8_t ucMaxPriorityValue;
+		volatile uint32_t * const pucFirstUserPriorityRegister = ( volatile uint8_t * const ) ( portINTERRUPT_CONTROLLER_CPU_INTERFACE_ADDRESS + portINTERRUPT_PRIORITY_REGISTER_OFFSET );
+		volatile uint32_t ucMaxPriorityValue;
 
 		/* Determine how many priority bits are implemented in the GIC.
 
@@ -289,7 +288,7 @@ uint32_t ulAPSR;
 		/* Shift to the least significant bits. */
 		while( ( ucMaxPriorityValue & portBIT_0_SET ) != portBIT_0_SET )
 		{
-			ucMaxPriorityValue >>= ( uint8_t ) 0x01;
+			ucMaxPriorityValue >>= ( uint32_t ) 0x01;
 		}
 
 		/* Sanity check configUNIQUE_INTERRUPT_PRIORITIES matches the read
@@ -302,7 +301,7 @@ uint32_t ulAPSR;
 		value. */
 		*pucFirstUserPriorityRegister = ulOriginalPriority;
 	}
-	#endif /* configASSERT_DEFINED */
+	#endif /* conifgASSERT_DEFINED */
 
 
 	/* At the time of writing, the BSP only supports EL3. */

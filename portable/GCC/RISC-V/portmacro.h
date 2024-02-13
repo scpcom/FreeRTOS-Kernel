@@ -47,7 +47,7 @@ extern "C" {
 /* Type definitions. */
 #if __riscv_xlen == 64
 	#define portSTACK_TYPE			uint64_t
-	#define portBASE_TYPE			int64_t
+	#define portBASE_TYPE			long long
 	#define portUBASE_TYPE			uint64_t
 	#define portMAX_DELAY 			( TickType_t ) 0xffffffffffffffffUL
 	#define portPOINTER_SIZE_TYPE 	uint64_t
@@ -173,6 +173,10 @@ definition is found. */
 	from the CLINT address. */
 	#define configMTIME_BASE_ADDRESS 	( ( configCLINT_BASE_ADDRESS ) + 0xBFF8UL )
 	#define configMTIMECMP_BASE_ADDRESS ( ( configCLINT_BASE_ADDRESS ) + 0x4000UL )
+#elif defined(THEAD_C906)
+	/* configMTIMECMP_BASE_ADDRESS is defined in FreeRTOSConfig.h &
+	 * get mtime by rdcycle SPR
+	 */
 #elif !defined( configMTIME_BASE_ADDRESS ) || !defined( configMTIMECMP_BASE_ADDRESS )
 	#error configMTIME_BASE_ADDRESS and configMTIMECMP_BASE_ADDRESS must be defined in FreeRTOSConfig.h.  Set them to zero if there is no MTIME (machine time) clock.  See https://www.FreeRTOS.org/Using-FreeRTOS-on-RISC-V.html
 #endif

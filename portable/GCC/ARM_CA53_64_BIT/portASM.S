@@ -244,6 +244,19 @@ FreeRTOS_SWI_Handler:
 	portRESTORE_CONTEXT
 
 FreeRTOS_Abort:
+	/* Switch to use the EL0 stack pointer. */
+	MSR 	SPSEL, #0
+
+	/* Save the entire context. */
+	/* 8x32bytes STP X0~X31 */
+	/* 8x2 bytes STP ELR_EL1 and SPSR_EL1 */
+	/* 8x2 bytes STP FPU context and critical section nesting depth */
+	MOV 	x1, #288
+	MOV 	x0, sp
+	ADD 	x0, x0, x1
+
+	/* Call the C handler to printf all the registers. */
+	BL vApplicationPrintRegister
 	/* Full ESR is in X0, exception class code is in X1. */
 	B		.
 
@@ -416,7 +429,7 @@ ullPortTaskHasFPUContextConst: .dword ullPortTaskHasFPUContext
 
 ullICCPMRConst: .dword ullICCPMR
 ullMaxAPIPriorityMaskConst: .dword ullMaxAPIPriorityMask
-vApplicationIRQHandlerConst: .word vApplicationIRQHandler
+
 ullPortInterruptNestingConst: .dword ullPortInterruptNesting
 ullPortYieldRequiredConst: .dword ullPortYieldRequired
 ullICCIARConst:	.dword ullICCIAR

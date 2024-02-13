@@ -60,6 +60,8 @@
 	#define portWORD_SIZE 8
 	#define store_x sd
 	#define load_x ld
+	#define store_f fsd
+	#define load_f fld
 #elif __riscv_xlen == 32
 	#define store_x sw
 	#define load_x lw
@@ -109,7 +111,12 @@ at the top of this file. */
 .extern vTaskSwitchContext
 .extern xTaskIncrementTick
 .extern Timer_IRQHandler
+#ifdef THEAD_C906
+.extern pulMachineTimerCompareRegisterL
+.extern pulMachineTimerCompareRegisterH
+#else
 .extern pullMachineTimerCompareRegister
+#endif
 .extern pullNextTime
 .extern uxTimerIncrementsForOneTick /* size_t type so 32-bit on 32-bit core and 64-bits on 64-bit core. */
 .extern xISRStackTop
@@ -177,8 +184,11 @@ handle_asynchronous:
 		slli t0, t0, __riscv_xlen - 1   /* LSB is already set, shift into MSB.  Shift 31 on 32-bit or 63 on 64-bit cores. */
 		addi t1, t0, 7					/* 0x8000[]0007 == machine timer interrupt. */
 		bne a0, t1, test_if_external_interrupt
-
+#ifdef THEAD_C906
+		load_x t0, pulMachineTimerCompareRegisterL  /* Load address of compare Lo register into t0. */
+#else
 		load_x t0, pullMachineTimerCompareRegister  /* Load address of compare register into t0. */
+#endif
 		load_x t1, pullNextTime  		/* Load the address of ullNextTime into t1. */
 
 		#if( __riscv_xlen == 32 )
@@ -201,13 +211,23 @@ handle_asynchronous:
 
 		#if( __riscv_xlen == 64 )
 
+#ifdef THEAD_C906
+			/* Update the 64-bit mtimer compare match value in two 32-bit writes. */
+			ld t2, 0(t1)			 	/* Load ullNextTime into t2. */
+			sw t2, 0(t0)				/* Store ullNextTime into compare register L. */
+			srli t3, t2, 32
+			sw t3, 4(t0)				/* Store ullNextTime into compare register H. */
+			ld t0, uxTimerIncrementsForOneTick  /* Load the value of ullTimerIncrementForOneTick into t0 (could this be optimized by storing in an array next to pullNextTime?). */
+			add t4, t0, t2				/* Add ullNextTime to the timer increments for one tick. */
+			sd t4, 0(t1)				/* Store ullNextTime. */
+#else
 			/* Update the 64-bit mtimer compare match value. */
 			ld t2, 0(t1)			 	/* Load ullNextTime into t2. */
 			sd t2, 0(t0)				/* Store ullNextTime into compare register. */
 			ld t0, uxTimerIncrementsForOneTick  /* Load the value of ullTimerIncrementForOneTick into t0 (could this be optimized by storing in an array next to pullNextTime?). */
 			add t4, t0, t2				/* Add ullNextTime to the timer increments for one tick. */
 			sd t4, 0(t1)				/* Store ullNextTime. */
-
+#endif
 		#endif /* __riscv_xlen == 64 */
 
 		load_x sp, xISRStackTop			/* Switch to ISR stack before function call. */
