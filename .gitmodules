@@ -4,3 +4,7 @@
 [submodule "ThirdParty/FreeRTOS-Kernel-Community-Supported-Ports"]
 	path = portable/ThirdParty/Community-Supported-Ports
 	url = https://github.com/FreeRTOS/FreeRTOS-Kernel-Community-Supported-Ports
+[submodule "FreeRTOS-Plus-POSIX"]
+	path = FreeRTOS-Plus-POSIX
+	url = https://github.com/scpcom/Lab-Project-FreeRTOS-POSIX
+	branch = licheervnano
